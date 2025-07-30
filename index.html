@@ -101,6 +101,17 @@
       }
     }
 
+    function enterFullscreen() {
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        el.requestFullscreen();
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen();
+      }
+    }
+
     window.onload = () => {
       const saved = localStorage.getItem('orders');
       if (saved) orders = JSON.parse(saved);
@@ -109,8 +120,14 @@
       const input = document.getElementById('hiddenInput');
       input.focus();
 
-      window.addEventListener('click', () => input.focus());
-      window.addEventListener('keydown', () => input.focus());
+      window.addEventListener('click', () => {
+        enterFullscreen();
+        input.focus();
+      });
+      window.addEventListener('keydown', () => {
+        enterFullscreen();
+        input.focus();
+      });
     };
 
     window.addEventListener('storage', function (e) {
