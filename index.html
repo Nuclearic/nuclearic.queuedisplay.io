@@ -59,7 +59,6 @@
   <div id="displayOrders"></div>
 
   <audio id="ding" src="https://www.orangefreesounds.com/wp-content/uploads/2021/01/Ding-dong-sound.mp3" preload="auto"></audio>
-
   <input type="text" id="hiddenInput" onkeydown="handleKey(event)" autocomplete="off" autofocus />
 
   <script>
@@ -76,11 +75,40 @@
       });
     }
 
-    function playDing() {
+    function speakWithPause(order) {
+      const map = {
+        '-': 'dash', '_': 'underscore', '/': 'slash', '\\': 'backslash',
+        '.': 'dot', ',': 'comma', '#': 'number', '&': 'and', '@': 'at',
+        '*': 'asterisk', '+': 'plus', '=': 'equals', '%': 'percent', '$': 'dollar'
+      };
+
+      const sequence = order.split('').map(char => {
+        if (map[char]) return map[char];
+        if (char.match(/[a-zA-Z]/)) return char.toUpperCase();
+        return char;
+      });
+
+      let delay = 0;
+      sequence.forEach(char => {
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(char);
+          utterance.lang = 'en-US';
+          utterance.rate = 1;
+          speechSynthesis.speak(utterance);
+        }, delay);
+        delay += 0; // 800ms pause between characters
+      });
+    }
+
+    function playDingAndSpeak(order) {
       const ding = document.getElementById('ding');
       ding.pause();
       ding.currentTime = 0;
       ding.play().catch(err => console.log("Sound error:", err));
+
+      setTimeout(() => {
+        speakWithPause(order);
+      }, 2000); // wait for ding to finish
     }
 
     function addOrder(order) {
@@ -88,7 +116,7 @@
       if (orders.length > 10) orders = orders.slice(0, 10);
       localStorage.setItem('orders', JSON.stringify(orders));
       showOrders();
-      playDing();
+      playDingAndSpeak(order);
     }
 
     function handleKey(e) {
@@ -103,13 +131,9 @@
 
     function enterFullscreen() {
       const el = document.documentElement;
-      if (el.requestFullscreen) {
-        el.requestFullscreen();
-      } else if (el.webkitRequestFullscreen) {
-        el.webkitRequestFullscreen();
-      } else if (el.msRequestFullscreen) {
-        el.msRequestFullscreen();
-      }
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
     }
 
     window.onload = () => {
@@ -134,7 +158,7 @@
       if (e.key === 'orders') {
         orders = JSON.parse(e.newValue || '[]');
         showOrders();
-        playDing();
+        if (orders.length) playDingAndSpeak(orders[0]);
       }
     });
   </script>
