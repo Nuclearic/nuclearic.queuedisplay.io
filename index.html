@@ -2,45 +2,120 @@
 <html>
 <head>
   <title>Order Display</title>
-  <meta name="viewport" content="width=640, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     html, body {
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       margin: 0;
       padding: 0;
       font-family: sans-serif;
       background: white;
       color: black;
+      overflow: hidden;
+    }
+
+    .main-layout {
+      display: flex;
+      flex-direction: row;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .orders-panel {
+      width: 33.33vw;
+      height: 100vh;
+      background: white;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      box-sizing: border-box;
+      padding-top: 10px;
+      padding-left: 10px;
+      padding-right: 10px;
     }
 
-    h1 {
-      font-size: 2em;
-      margin: 20px;
+    .orders-panel h1 {
+      font-size: clamp(1.5rem, 2.5vw, 2.2em);
+      margin: 20px 0 10px 0;
+      text-align: center;
     }
 
     #displayOrders {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      grid-gap: 10px;
-      width: 90%;
-      padding: 10px;
+      grid-template-rows: repeat(5, minmax(0, 1fr));
+      grid-gap: 16px;
+      width: 100%;
+      height: calc(100vh - 100px);
       box-sizing: border-box;
+      overflow-y: hidden;
     }
 
     .order {
+      font-size: clamp(1.5rem, 3vw, 4.5em);
+      height: 100%;
+      padding: 12px 8px;
+      border: 4px solid black;
+      border-radius: 20px;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      height: 150px;
-      border: 2px solid black;
-      border-radius: 10px;
-      font-size: 2em;
+      font-weight: bold;
+      text-align: center;
+      word-break: break-word;
+      box-sizing: border-box;
+      background-clip: padding-box;
+      line-height: 1.1;
+    }
+
+    .order.grabfood {
+      font-size: clamp(1.2rem, 2.5vw, 3.5em);
+    }
+
+    .grabfood {
+      background: #00b74f;
+      color: white;
+    }
+
+    .foodpanda {
+      background: #e6007e;
+      color: white;
+    }
+
+    .deliveroo {
+      background: #00c2c7;
+      color: white;
+    }
+
+    .takeaway {
       background: #f0f0f0;
+      color: black;
+    }
+
+    .platform-label {
+      font-size: 0.5em;
+      margin-bottom: 10px;
+    }
+
+    .right-image-panel {
+      width: 66.67vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .alt-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background-color: #222;
     }
 
     #hiddenInput {
@@ -52,71 +127,159 @@
       opacity: 0;
       z-index: 1;
     }
+
+    /* Responsive for smaller screens */
+    @media (max-width: 600px) {
+      .main-layout {
+        flex-direction: column;
+      }
+      .orders-panel {
+        width: 100vw;
+        max-width: none;
+        height: auto;
+        padding: 10px 5px;
+      }
+      #displayOrders {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(10, 80px);
+        height: auto;
+        overflow-y: auto;
+      }
+      .order {
+        font-size: clamp(1rem, 4vw, 3em);
+        height: 80px;
+      }
+      .right-image-panel {
+        width: 100vw;
+        height: 300px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Now Serving</h1>
-  <div id="displayOrders"></div>
+  <div class="main-layout">
+    <div class="orders-panel">
+      <h1>Now Serving</h1>
+      <div id="displayOrders"></div>
+    </div>
+    <div class="right-image-panel">
+      <img id="altImage" class="alt-image" src="OKNEXTV1_1.jpg" alt="Alternating Image" />
+    </div>
+  </div>
 
   <audio id="ding" src="https://www.orangefreesounds.com/wp-content/uploads/2021/01/Ding-dong-sound.mp3" preload="auto"></audio>
   <input type="text" id="hiddenInput" onkeydown="handleKey(event)" autocomplete="off" autofocus />
 
   <script>
     let orders = [];
+    let speechQueue = [];
+    let isSpeaking = false;
 
     function showOrders() {
       const display = document.getElementById('displayOrders');
       display.innerHTML = '';
       orders.forEach(order => {
         const div = document.createElement('div');
-        div.className = 'order';
-        div.textContent = order;
+        div.className = `order ${order.platform}`;
+        div.innerHTML = `<div class="platform-label">${order.platformLabel}</div>${order.text}`;
         display.appendChild(div);
       });
     }
 
     function speakWithPause(order) {
-      const map = {
-        '-': 'dash', '_': 'underscore', '/': 'slash', '\\': 'backslash',
-        '.': 'dot', ',': 'comma', '#': 'number', '&': 'and', '@': 'at',
-        '*': 'asterisk', '+': 'plus', '=': 'equals', '%': 'percent', '$': 'dollar'
-      };
+      return new Promise(resolve => {
+        const map = {
+          '-': 'dash', '_': 'underscore', '/': 'slash', '\\': 'backslash',
+          '.': 'dot', ',': 'comma', '#': '', '&': 'and', '@': 'at',
+          '*': '', '+': 'plus', '=': 'equals', '%': 'percent', '$': 'dollar'
+        };
 
-      const sequence = order.split('').map(char => {
-        if (map[char]) return map[char];
-        if (char.match(/[a-zA-Z]/)) return char.toUpperCase();
-        return char;
-      });
+        const sequence = order.split('').map(char => {
+          if (map[char] !== undefined) return map[char];
+          if (char.match(/[a-zA-Z]/)) return char.toUpperCase();
+          return char;
+        }).filter(Boolean);
 
-      let delay = 0;
-      sequence.forEach(char => {
-        setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(char);
-          utterance.lang = 'en-US';
-          utterance.rate = 1; // slower reading
+        let index = 0;
+        function speakNext() {
+          if (index >= sequence.length) {
+            resolve();
+            return;
+          }
+          const utterance = new SpeechSynthesisUtterance(sequence[index]);
+          utterance.lang = 'en-GB';
+          utterance.rate = 1;
+          utterance.onend = () => {
+            setTimeout(() => {
+              index++;
+              speakNext();
+            }, 30);
+          };
           speechSynthesis.speak(utterance);
-        }, delay);
-        delay += 0; // pause between each character
+        }
+        speakNext();
       });
     }
 
-    function playDingAndSpeak(order) {
+    async function playDingAndSpeak(order) {
+      isSpeaking = true;
       const ding = document.getElementById('ding');
       ding.pause();
       ding.currentTime = 0;
-      ding.play().catch(err => console.log("Sound error:", err));
-
-      setTimeout(() => {
-        speakWithPause(order);
-      }, 2000); // allow time for ding-dong to finish
+      try { await ding.play(); } catch (e) { console.log("Ding error:", e); }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await speakWithPause(order);
+      isSpeaking = false;
+      if (speechQueue.length > 0) {
+        const nextOrder = speechQueue.shift();
+        playDingAndSpeak(nextOrder);
+      }
     }
 
-    function addOrder(order) {
-      orders.unshift(order);
-      if (orders.length > 10) orders = orders.slice(0, 10);
+    function addOrder(raw) {
+      let platform = '';
+      let formattedOrder = raw;
+      let label = '';
+      let speakText = '';
+
+      if (raw.startsWith('*')) {
+        platform = 'grabfood';
+        formattedOrder = `GF-${raw.slice(1)}`;
+        label = 'Grabfood';
+        speakText = formattedOrder;
+      } else if (raw.startsWith('/')) {
+        platform = 'foodpanda';
+        formattedOrder = `#${raw.slice(1)}`;
+        label = 'Foodpanda';
+        speakText = raw.slice(1);
+      } else if (raw.startsWith('-')) {
+        platform = 'deliveroo';
+        formattedOrder = `#${raw.slice(1)}`;
+        label = 'Deliveroo';
+        speakText = raw.slice(1);
+      } else {
+        platform = 'takeaway';
+        formattedOrder = raw;
+        label = 'Takeaway';
+        speakText = raw;
+      }
+
+      const newEntry = {
+        text: formattedOrder,
+        platform,
+        platformLabel: label
+      };
+
+      orders.unshift(newEntry);
+      orders = orders.slice(0, 10);
       localStorage.setItem('orders', JSON.stringify(orders));
       showOrders();
-      playDingAndSpeak(order);
+
+      if (isSpeaking) {
+        speechQueue.push(speakText);
+      } else {
+        playDingAndSpeak(speakText);
+      }
     }
 
     function handleKey(e) {
@@ -137,30 +300,44 @@
     }
 
     window.onload = () => {
-      const saved = localStorage.getItem('orders');
-      if (saved) orders = JSON.parse(saved);
+      localStorage.removeItem('orders');
+      orders = [];
       showOrders();
 
       const input = document.getElementById('hiddenInput');
       input.focus();
 
-      const unlock = () => {
+      window.addEventListener('click', () => {
         enterFullscreen();
-        speechSynthesis.resume(); // 🔓 unlock speech
         input.focus();
-      };
-
-      window.addEventListener('click', unlock);
-      window.addEventListener('keydown', unlock);
+      });
+      window.addEventListener('keydown', () => {
+        enterFullscreen();
+        input.focus();
+      });
     };
 
     window.addEventListener('storage', function (e) {
       if (e.key === 'orders') {
         orders = JSON.parse(e.newValue || '[]');
         showOrders();
-        if (orders.length) playDingAndSpeak(orders[0]);
+        if (orders.length && !isSpeaking) playDingAndSpeak(orders[0].text);
       }
     });
+
+    // Image alternator for the right panel
+    const imageList = [
+      "OKNEXTV1_1.jpg",
+      "OKNEXTV1_2.jpg"
+    ];
+    let imgIndex = 0;
+
+    function alternateImage() {
+      imgIndex = (imgIndex + 1) % imageList.length;
+      document.getElementById('altImage').src = imageList[imgIndex];
+    }
+
+    setInterval(alternateImage, 10000);
   </script>
 </body>
 </html>
