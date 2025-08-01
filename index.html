@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>Order Display</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=100vw, initial-scale=1.0">
   <style>
     html, body {
       width: 100vw;
@@ -36,7 +36,7 @@
     }
 
     .orders-panel h1 {
-      font-size: clamp(1.5rem, 2.5vw, 2.2em);
+      font-size: 2.2em; /* fallback for clamp */
       margin: 20px 0 10px 0;
       text-align: center;
     }
@@ -53,7 +53,7 @@
     }
 
     .order {
-      font-size: clamp(2.5rem, 4vw, 4.5em);
+      font-size: 4em; /* fallback for clamp */
       height: 100%;
       padding: 12px 8px;
       border: 4px solid black;
@@ -71,7 +71,7 @@
     }
 
     .order.grabfood {
-      font-size: clamp(2rem, 3.5vw, 4em);
+      font-size: 3.5em; /* fallback for clamp */
     }
 
     .grabfood {
@@ -118,16 +118,6 @@
       background-color: #222;
     }
 
-    #hiddenInput {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      z-index: 1;
-    }
-
     /* Responsive for smaller screens */
     @media (max-width: 600px) {
       .main-layout {
@@ -146,7 +136,7 @@
         overflow-y: auto;
       }
       .order {
-        font-size: clamp(1rem, 4vw, 3em);
+        font-size: 2em; /* fallback for clamp */
         height: 80px;
       }
       .right-image-panel {
@@ -168,7 +158,9 @@
   </div>
 
   <audio id="ding" src="https://www.orangefreesounds.com/wp-content/uploads/2021/01/Ding-dong-sound.mp3" preload="auto"></audio>
-  <input type="text" id="hiddenInput" onkeydown="handleKey(event)" autocomplete="off" autofocus />
+  <input type="text" id="hiddenInput" onkeydown="handleKey(event)"
+    style="opacity:0.01;position:absolute;left:0;top:0;width:1px;height:1px;z-index:1;"
+    />
 
   <script>
     let orders = [];
@@ -180,37 +172,44 @@
       display.innerHTML = '';
       orders.forEach(order => {
         const div = document.createElement('div');
-        div.className = `order ${order.platform}`;
-        div.innerHTML = `<div class="platform-label">${order.platformLabel}</div>${order.text}`;
+        div.className = 'order ' + order.platform;
+        div.innerHTML = '<div class="platform-label">' + order.platformLabel + '</div>' + order.text;
         display.appendChild(div);
       });
     }
 
     function speakWithPause(order) {
-      return new Promise(resolve => {
-        const map = {
+      return new Promise(function(resolve) {
+        var map = {
           '-': 'dash', '_': 'underscore', '/': 'slash', '\\': 'backslash',
           '.': 'dot', ',': 'comma', '#': '', '&': 'and', '@': 'at',
           '*': '', '+': 'plus', '=': 'equals', '%': 'percent', '$': 'dollar'
         };
 
-        const sequence = order.split('').map(char => {
-          if (map[char] !== undefined) return map[char];
-          if (char.match(/[a-zA-Z]/)) return char.toUpperCase();
-          return char;
-        }).filter(Boolean);
+        var sequence = [];
+        for (var i = 0; i < order.length; i++) {
+          var char = order[i];
+          if (map[char] !== undefined) {
+            if (map[char]) sequence.push(map[char]);
+          } else if (/[a-zA-Z]/.test(char)) {
+            sequence.push(char.toUpperCase());
+          } else {
+            sequence.push(char);
+          }
+        }
 
-        let index = 0;
+        var index = 0;
         function speakNext() {
           if (index >= sequence.length) {
             resolve();
             return;
           }
-          const utterance = new SpeechSynthesisUtterance(sequence[index]);
+          speechSynthesis.cancel(); // For chromium 94 reliability
+          var utterance = new SpeechSynthesisUtterance(sequence[index]);
           utterance.lang = 'en-GB';
           utterance.rate = 1;
-          utterance.onend = () => {
-            setTimeout(() => {
+          utterance.onend = function() {
+            setTimeout(function() {
               index++;
               speakNext();
             }, 30);
@@ -223,38 +222,38 @@
 
     async function playDingAndSpeak(order) {
       isSpeaking = true;
-      const ding = document.getElementById('ding');
+      var ding = document.getElementById('ding');
       ding.pause();
       ding.currentTime = 0;
-      try { await ding.play(); } catch (e) { console.log("Ding error:", e); }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      try { await ding.play(); } catch (e) {}
+      await new Promise(function(resolve) { setTimeout(resolve, 1000); });
       await speakWithPause(order);
       isSpeaking = false;
       if (speechQueue.length > 0) {
-        const nextOrder = speechQueue.shift();
+        var nextOrder = speechQueue.shift();
         playDingAndSpeak(nextOrder);
       }
     }
 
     function addOrder(raw) {
-      let platform = '';
-      let formattedOrder = raw;
-      let label = '';
-      let speakText = '';
+      var platform = '';
+      var formattedOrder = raw;
+      var label = '';
+      var speakText = '';
 
       if (raw.startsWith('*')) {
         platform = 'grabfood';
-        formattedOrder = `GF-${raw.slice(1)}`;
+        formattedOrder = 'GF-' + raw.slice(1);
         label = 'Grabfood';
         speakText = formattedOrder;
       } else if (raw.startsWith('/')) {
         platform = 'foodpanda';
-        formattedOrder = `#${raw.slice(1)}`;
+        formattedOrder = '#' + raw.slice(1);
         label = 'Foodpanda';
         speakText = raw.slice(1);
       } else if (raw.startsWith('-')) {
         platform = 'deliveroo';
-        formattedOrder = `#${raw.slice(1)}`;
+        formattedOrder = '#' + raw.slice(1);
         label = 'Deliveroo';
         speakText = raw.slice(1);
       } else {
@@ -264,15 +263,15 @@
         speakText = raw;
       }
 
-      const newEntry = {
+      var newEntry = {
         text: formattedOrder,
-        platform,
+        platform: platform,
         platformLabel: label
       };
 
       orders.unshift(newEntry);
       orders = orders.slice(0, 10);
-      localStorage.setItem('orders', JSON.stringify(orders));
+      try { localStorage.setItem('orders', JSON.stringify(orders)); } catch (e) {}
       showOrders();
 
       if (isSpeaking) {
@@ -284,7 +283,7 @@
 
     function handleKey(e) {
       if (e.key === 'Enter') {
-        const value = e.target.value.trim();
+        var value = e.target.value.trim();
         if (value) {
           addOrder(value);
         }
@@ -293,25 +292,25 @@
     }
 
     function enterFullscreen() {
-      const el = document.documentElement;
+      var el = document.documentElement;
       if (el.requestFullscreen) el.requestFullscreen();
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
       else if (el.msRequestFullscreen) el.msRequestFullscreen();
     }
 
-    window.onload = () => {
-      localStorage.removeItem('orders');
+    window.onload = function() {
+      try { localStorage.removeItem('orders'); } catch (e) {}
       orders = [];
       showOrders();
 
-      const input = document.getElementById('hiddenInput');
+      var input = document.getElementById('hiddenInput');
       input.focus();
 
-      window.addEventListener('click', () => {
+      window.addEventListener('click', function() {
         enterFullscreen();
         input.focus();
       });
-      window.addEventListener('keydown', () => {
+      window.addEventListener('keydown', function() {
         enterFullscreen();
         input.focus();
       });
@@ -319,18 +318,20 @@
 
     window.addEventListener('storage', function (e) {
       if (e.key === 'orders') {
-        orders = JSON.parse(e.newValue || '[]');
+        try {
+          orders = JSON.parse(e.newValue || '[]');
+        } catch (err) { orders = []; }
         showOrders();
         if (orders.length && !isSpeaking) playDingAndSpeak(orders[0].text);
       }
     });
 
     // Image alternator for the right panel
-    const imageList = [
+    var imageList = [
       "OKNEXTV1_1.jpg",
       "OKNEXTV1_2.jpg"
     ];
-    let imgIndex = 0;
+    var imgIndex = 0;
 
     function alternateImage() {
       imgIndex = (imgIndex + 1) % imageList.length;
