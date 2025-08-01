@@ -34,13 +34,11 @@
       padding-left: 10px;
       padding-right: 10px;
     }
-
     .orders-panel h1 {
-      font-size: 2.2em; /* fallback for clamp */
+      font-size: 2.2em;
       margin: 20px 0 10px 0;
       text-align: center;
     }
-
     #displayOrders {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -51,9 +49,8 @@
       box-sizing: border-box;
       overflow-y: hidden;
     }
-
     .order {
-      font-size: 4em; /* fallback for clamp */
+      font-size: 4em;
       height: 100%;
       padding: 12px 8px;
       border: 4px solid black;
@@ -69,36 +66,12 @@
       background-clip: padding-box;
       line-height: 1.1;
     }
-
-    .order.grabfood {
-      font-size: 3.5em; /* fallback for clamp */
-    }
-
-    .grabfood {
-      background: #00b74f;
-      color: white;
-    }
-
-    .foodpanda {
-      background: #e6007e;
-      color: white;
-    }
-
-    .deliveroo {
-      background: #00c2c7;
-      color: white;
-    }
-
-    .takeaway {
-      background: #f0f0f0;
-      color: black;
-    }
-
-    .platform-label {
-      font-size: 0.5em;
-      margin-bottom: 10px;
-    }
-
+    .order.grabfood { font-size: 3.5em; }
+    .grabfood { background: #00b74f; color: white; }
+    .foodpanda { background: #e6007e; color: white; }
+    .deliveroo { background: #00c2c7; color: white; }
+    .takeaway { background: #f0f0f0; color: black; }
+    .platform-label { font-size: 0.5em; margin-bottom: 10px; }
     .right-image-panel {
       width: 66.67vw;
       height: 100vh;
@@ -109,7 +82,6 @@
       position: relative;
       overflow: hidden;
     }
-
     .alt-image {
       width: 100%;
       height: 100%;
@@ -117,32 +89,35 @@
       display: block;
       background-color: #222;
     }
-
     /* Responsive for smaller screens */
     @media (max-width: 600px) {
-      .main-layout {
-        flex-direction: column;
-      }
+      .main-layout { flex-direction: column; }
       .orders-panel {
-        width: 100vw;
-        max-width: none;
-        height: auto;
-        padding: 10px 5px;
+        width: 100vw; max-width: none;
+        height: auto; padding: 10px 5px;
       }
       #displayOrders {
         grid-template-columns: 1fr;
         grid-template-rows: repeat(10, 80px);
-        height: auto;
-        overflow-y: auto;
+        height: auto; overflow-y: auto;
       }
-      .order {
-        font-size: 2em; /* fallback for clamp */
-        height: 80px;
-      }
-      .right-image-panel {
-        width: 100vw;
-        height: 300px;
-      }
+      .order { font-size: 2em; height: 80px; }
+      .right-image-panel { width: 100vw; height: 300px; }
+    }
+    /* Input should be almost invisible, but (importantly) "active" */
+    #entryInput {
+      opacity: 0.15;
+      width: 80px;
+      height: 28px;
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 999;
+      border: none;
+      background: #fff;
+      color: #000;
+      font-size: 16px;
+      pointer-events: auto;
     }
   </style>
 </head>
@@ -158,15 +133,14 @@
   </div>
 
   <audio id="ding" src="https://www.orangefreesounds.com/wp-content/uploads/2021/01/Ding-dong-sound.mp3" preload="auto"></audio>
-  <input type="text" id="hiddenInput" onkeydown="handleKey(event)"
-    style="opacity:0.01;position:absolute;left:0;top:0;width:1px;height:1px;z-index:1;"
-    />
+  <input type="text" id="entryInput" autocomplete="off" />
 
   <script>
     let orders = [];
     let speechQueue = [];
     let isSpeaking = false;
 
+    // Shows orders
     function showOrders() {
       const display = document.getElementById('displayOrders');
       display.innerHTML = '';
@@ -178,6 +152,19 @@
       });
     }
 
+    // Attempts to play audio
+    function tryPlayDing() {
+      const ding = document.getElementById('ding');
+      try {
+        ding.pause();
+        ding.currentTime = 0;
+        return ding.play();
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    }
+
+    // Speech Synthesis
     function speakWithPause(order) {
       return new Promise(function(resolve) {
         var map = {
@@ -185,7 +172,6 @@
           '.': 'dot', ',': 'comma', '#': '', '&': 'and', '@': 'at',
           '*': '', '+': 'plus', '=': 'equals', '%': 'percent', '$': 'dollar'
         };
-
         var sequence = [];
         for (var i = 0; i < order.length; i++) {
           var char = order[i];
@@ -197,22 +183,15 @@
             sequence.push(char);
           }
         }
-
         var index = 0;
         function speakNext() {
-          if (index >= sequence.length) {
-            resolve();
-            return;
-          }
-          speechSynthesis.cancel(); // For chromium 94 reliability
+          if (index >= sequence.length) return resolve();
+          window.speechSynthesis.cancel();
           var utterance = new SpeechSynthesisUtterance(sequence[index]);
           utterance.lang = 'en-GB';
           utterance.rate = 1;
           utterance.onend = function() {
-            setTimeout(function() {
-              index++;
-              speakNext();
-            }, 30);
+            setTimeout(function() { index++; speakNext(); }, 30);
           };
           speechSynthesis.speak(utterance);
         }
@@ -222,11 +201,15 @@
 
     async function playDingAndSpeak(order) {
       isSpeaking = true;
-      var ding = document.getElementById('ding');
-      ding.pause();
-      ding.currentTime = 0;
-      try { await ding.play(); } catch (e) {}
-      await new Promise(function(resolve) { setTimeout(resolve, 1000); });
+      try {
+        await tryPlayDing();
+      } catch (e) {
+        // Audio blocked.
+        // Optional: highlight UI
+        // document.body.style.background = '#fff04a';
+        // setTimeout(() => document.body.style.background = '', 400);
+      }
+      await new Promise(r => setTimeout(r, 1000));
       await speakWithPause(order);
       isSpeaking = false;
       if (speechQueue.length > 0) {
@@ -263,17 +246,13 @@
         speakText = raw;
       }
 
-      var newEntry = {
-        text: formattedOrder,
-        platform: platform,
-        platformLabel: label
-      };
-
+      var newEntry = { text: formattedOrder, platform: platform, platformLabel: label };
       orders.unshift(newEntry);
       orders = orders.slice(0, 10);
       try { localStorage.setItem('orders', JSON.stringify(orders)); } catch (e) {}
       showOrders();
 
+      // Try to speak and play ding
       if (isSpeaking) {
         speechQueue.push(speakText);
       } else {
@@ -281,48 +260,18 @@
       }
     }
 
-    function handleKey(e) {
+    // Accept Enter on whole doc or in field
+    document.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
-        var value = e.target.value.trim();
+        const input = document.getElementById('entryInput');
+        let value = input.value.trim();
         if (value) {
           addOrder(value);
+          input.value = '';
         }
-        e.target.value = '';
-      }
-    }
-
-    function enterFullscreen() {
-      var el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-      else if (el.msRequestFullscreen) el.msRequestFullscreen();
-    }
-
-    window.onload = function() {
-      try { localStorage.removeItem('orders'); } catch (e) {}
-      orders = [];
-      showOrders();
-
-      var input = document.getElementById('hiddenInput');
-      input.focus();
-
-      window.addEventListener('click', function() {
-        enterFullscreen();
         input.focus();
-      });
-      window.addEventListener('keydown', function() {
-        enterFullscreen();
-        input.focus();
-      });
-    };
-
-    window.addEventListener('storage', function (e) {
-      if (e.key === 'orders') {
-        try {
-          orders = JSON.parse(e.newValue || '[]');
-        } catch (err) { orders = []; }
-        showOrders();
-        if (orders.length && !isSpeaking) playDingAndSpeak(orders[0].text);
+        // Try to unlock media context with every user Enter key!
+        tryPlayDing();
       }
     });
 
@@ -337,8 +286,21 @@
       imgIndex = (imgIndex + 1) % imageList.length;
       document.getElementById('altImage').src = imageList[imgIndex];
     }
-
     setInterval(alternateImage, 10000);
+
+    window.onload = function() {
+      try { localStorage.removeItem('orders'); } catch (e) {}
+      orders = [];
+      showOrders();
+      // Make sure input always has focus
+      setTimeout(() => {
+        document.getElementById('entryInput').focus();
+      }, 250);
+      // Optionally, refresh input focus every few seconds to fight focus loss
+      setInterval(() => {
+        document.getElementById('entryInput').focus();
+      }, 2000);
+    };
   </script>
 </body>
 </html>
