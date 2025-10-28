@@ -89,7 +89,6 @@
       display: block;
       background-color: #222;
     }
-    /* Responsive for smaller screens */
     @media (max-width: 600px) {
       .main-layout { flex-direction: column; }
       .orders-panel {
@@ -104,7 +103,6 @@
       .order { font-size: 2em; height: 80px; }
       .right-image-panel { width: 100vw; height: 300px; }
     }
-    /* Input should be almost invisible, but (importantly) "active" */
     #entryInput {
       opacity: 0.15;
       width: 80px;
@@ -140,7 +138,6 @@
     let speechQueue = [];
     let isSpeaking = false;
 
-    // Shows orders
     function showOrders() {
       const display = document.getElementById('displayOrders');
       display.innerHTML = '';
@@ -152,7 +149,6 @@
       });
     }
 
-    // Attempts to play audio
     function tryPlayDing() {
       const ding = document.getElementById('ding');
       try {
@@ -164,7 +160,6 @@
       }
     }
 
-    // Speech Synthesis
     function speakWithPause(order) {
       return new Promise(function(resolve) {
         var map = {
@@ -203,12 +198,7 @@
       isSpeaking = true;
       try {
         await tryPlayDing();
-      } catch (e) {
-        // Audio blocked.
-        // Optional: highlight UI
-        // document.body.style.background = '#fff04a';
-        // setTimeout(() => document.body.style.background = '', 400);
-      }
+      } catch (e) {}
       await new Promise(r => setTimeout(r, 1000));
       await speakWithPause(order);
       isSpeaking = false;
@@ -219,32 +209,40 @@
     }
 
     function addOrder(raw) {
+      var input = raw.trim();
+
+      // 🧹 Clean up accidental symbols at start or within
+      input = input.replace(/^[^a-zA-Z0-9]+/, '');  // remove leading non-alphanumerics
+      input = input.replace(/[*\/-]/g, '');          // remove symbols within
+
       var platform = '';
-      var formattedOrder = raw;
+      var formattedOrder = input;
       var label = '';
       var speakText = '';
 
+      // Determine platform by clean first character
       if (raw.startsWith('*')) {
         platform = 'grabfood';
-        formattedOrder = 'GF-' + raw.slice(1);
+        formattedOrder = 'GF-' + raw.slice(1).replace(/[^a-zA-Z0-9]/g, '');
         label = 'Grabfood';
         speakText = formattedOrder;
       } else if (raw.startsWith('/')) {
         platform = 'foodpanda';
-        formattedOrder = '#' + raw.slice(1);
+        formattedOrder = '#' + raw.slice(1).replace(/[^a-zA-Z0-9]/g, '');
         label = 'Foodpanda';
-        speakText = raw.slice(1);
+        speakText = formattedOrder.slice(1);
       } else if (raw.startsWith('-')) {
         platform = 'deliveroo';
-        formattedOrder = '#' + raw.slice(1);
+        formattedOrder = '#' + raw.slice(1).replace(/[^a-zA-Z0-9]/g, '');
         label = 'Deliveroo';
-        speakText = raw.slice(1);
+        speakText = formattedOrder.slice(1);
       } else {
         platform = 'takeaway';
-        formattedOrder = raw;
         label = 'Takeaway';
-        speakText = raw;
+        speakText = formattedOrder;
       }
+
+      if (!formattedOrder) return; // prevent empty entries
 
       var newEntry = { text: formattedOrder, platform: platform, platformLabel: label };
       orders.unshift(newEntry);
@@ -252,7 +250,6 @@
       try { localStorage.setItem('orders', JSON.stringify(orders)); } catch (e) {}
       showOrders();
 
-      // Try to speak and play ding
       if (isSpeaking) {
         speechQueue.push(speakText);
       } else {
@@ -260,7 +257,6 @@
       }
     }
 
-    // Accept Enter on whole doc or in field
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
         const input = document.getElementById('entryInput');
@@ -270,18 +266,15 @@
           input.value = '';
         }
         input.focus();
-        // Try to unlock media context with every user Enter key!
         tryPlayDing();
       }
     });
 
-    // Image alternator for the right panel
     var imageList = [
       "OKNEXTV1_1.jpg",
       "OKNEXTV1_2.jpg"
     ];
     var imgIndex = 0;
-
     function alternateImage() {
       imgIndex = (imgIndex + 1) % imageList.length;
       document.getElementById('altImage').src = imageList[imgIndex];
@@ -292,11 +285,9 @@
       try { localStorage.removeItem('orders'); } catch (e) {}
       orders = [];
       showOrders();
-      // Make sure input always has focus
       setTimeout(() => {
         document.getElementById('entryInput').focus();
       }, 250);
-      // Optionally, refresh input focus every few seconds to fight focus loss
       setInterval(() => {
         document.getElementById('entryInput').focus();
       }, 2000);
