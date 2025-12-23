@@ -1,0 +1,5 @@
+Place picture & video files here.
+Picture & video files will be sorted by filename when played.
+File resolution should be in landscape mode (1024 X 768).
+Equivalent file in portrait mode (768 X 1024) should be placed in PORTRAIT sub-folder.
+Supported file formats: JPG, BMP, MPEG, MP4, AVI, WMV
