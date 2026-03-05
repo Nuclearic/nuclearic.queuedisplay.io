@@ -34,11 +34,13 @@
       padding-left: 10px;
       padding-right: 10px;
     }
+
     .orders-panel h1 {
       font-size: 2.2em;
       margin: 20px 0 10px 0;
       text-align: center;
     }
+
     #displayOrders {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -49,6 +51,7 @@
       box-sizing: border-box;
       overflow-y: hidden;
     }
+
     .order {
       font-size: 4em;
       height: 100%;
@@ -66,12 +69,19 @@
       background-clip: padding-box;
       line-height: 1.1;
     }
+
     .order.grabfood { font-size: 3.5em; }
+
     .grabfood { background: #00b74f; color: white; }
     .foodpanda { background: #e6007e; color: white; }
     .deliveroo { background: #00c2c7; color: white; }
     .takeaway { background: #f0f0f0; color: black; }
-    .platform-label { font-size: 0.5em; margin-bottom: 10px; }
+
+    .platform-label {
+      font-size: 0.5em;
+      margin-bottom: 10px;
+    }
+
     .right-image-panel {
       width: 66.67vw;
       height: 100vh;
@@ -82,6 +92,7 @@
       position: relative;
       overflow: hidden;
     }
+
     .alt-image {
       width: 100%;
       height: 100%;
@@ -89,20 +100,7 @@
       display: block;
       background-color: #222;
     }
-    @media (max-width: 600px) {
-      .main-layout { flex-direction: column; }
-      .orders-panel {
-        width: 100vw; max-width: none;
-        height: auto; padding: 10px 5px;
-      }
-      #displayOrders {
-        grid-template-columns: 1fr;
-        grid-template-rows: repeat(10, 80px);
-        height: auto; overflow-y: auto;
-      }
-      .order { font-size: 2em; height: 80px; }
-      .right-image-panel { width: 100vw; height: 300px; }
-    }
+
     #entryInput {
       opacity: 0.15;
       width: 80px;
@@ -119,179 +117,271 @@
     }
   </style>
 </head>
+
 <body>
-  <div class="main-layout">
-    <div class="orders-panel">
-      <h1>Now Serving</h1>
-      <div id="displayOrders"></div>
-    </div>
-    <div class="right-image-panel">
-      <img id="altImage" class="alt-image" src="OKNEXTV1_1.jpg" alt="Alternating Image" />
-    </div>
+
+<div class="main-layout">
+
+  <div class="orders-panel">
+    <h1>Now Serving</h1>
+    <div id="displayOrders"></div>
   </div>
 
-  <audio id="ding" src="Ding-dong-sound.mp3" preload="auto"></audio>
-  <input type="text" id="entryInput" autocomplete="off" />
+  <div class="right-image-panel">
+    <img id="altImage" class="alt-image" src="OKNEXTV1_1.jpg">
+  </div>
 
-  <script>
-    let orders = [];
-    let speechQueue = [];
-    let isSpeaking = false;
+</div>
 
-    function showOrders() {
-      const display = document.getElementById('displayOrders');
-      display.innerHTML = '';
-      orders.forEach(order => {
-        const div = document.createElement('div');
-        div.className = 'order ' + order.platform;
-        div.innerHTML = '<div class="platform-label">' + order.platformLabel + '</div>' + order.text;
-        display.appendChild(div);
-      });
-    }
+<audio id="ding" src="Ding-dong-sound.mp3" preload="auto"></audio>
+<input type="text" id="entryInput" autocomplete="off" />
 
-    function tryPlayDing() {
-      const ding = document.getElementById('ding');
-      try {
-        ding.pause();
-        ding.currentTime = 0;
-        return ding.play();
-      } catch (e) {
-        return Promise.reject(e);
-      }
-    }
+<script>
 
-    function speakWithPause(order) {
-      return new Promise(function(resolve) {
-        var map = {
-          '-': 'dash', '_': 'underscore', '/': 'slash', '\\': 'backslash',
-          '.': 'dot', ',': 'comma', '#': '', '&': 'and', '@': 'at',
-          '*': '', '+': 'plus', '=': 'equals', '%': 'percent', '$': 'dollar'
-        };
-        var sequence = [];
-        for (var i = 0; i < order.length; i++) {
-          var char = order[i];
-          if (map[char] !== undefined) {
-            if (map[char]) sequence.push(map[char]);
-          } else if (/[a-zA-Z]/.test(char)) {
-            sequence.push(char.toUpperCase());
-          } else {
-            sequence.push(char);
-          }
-        }
-        var index = 0;
-        function speakNext() {
-          if (index >= sequence.length) return resolve();
-          window.speechSynthesis.cancel();
-          var utterance = new SpeechSynthesisUtterance(sequence[index]);
-          utterance.lang = 'en-GB';
-          utterance.rate = 1;
-          utterance.onend = function() {
-            setTimeout(function() { index++; speakNext(); }, 30);
-          };
-          speechSynthesis.speak(utterance);
-        }
-        speakNext();
-      });
-    }
+let orders = [];
+let speechQueue = [];
+let isSpeaking = false;
 
-    async function playDingAndSpeak(order) {
-      isSpeaking = true;
-      try {
-        await tryPlayDing();
-      } catch (e) {}
-      await new Promise(r => setTimeout(r, 1000));
-      await speakWithPause(order);
-      isSpeaking = false;
-      if (speechQueue.length > 0) {
-        var nextOrder = speechQueue.shift();
-        playDingAndSpeak(nextOrder);
-      }
-    }
+function showOrders() {
+  const display = document.getElementById('displayOrders');
+  display.innerHTML = '';
 
-    function addOrder(raw) {
-      var input = raw.trim();
+  orders.forEach(order => {
+    const div = document.createElement('div');
+    div.className = 'order ' + order.platform;
+    div.innerHTML =
+      '<div class="platform-label">' +
+      order.platformLabel +
+      '</div>' +
+      order.text;
 
-      // 🧹 Clean up accidental symbols at start or within
-      input = input.replace(/^[^a-zA-Z0-9]+/, '');  // remove leading non-alphanumerics
-      input = input.replace(/[*\/-]/g, '');          // remove symbols within
+    display.appendChild(div);
+  });
+}
 
-      var platform = '';
-      var formattedOrder = input;
-      var label = '';
-      var speakText = '';
+function tryPlayDing() {
+  const ding = document.getElementById('ding');
+  try {
+    ding.pause();
+    ding.currentTime = 0;
+    return ding.play();
+  } catch (e) {
+    return Promise.reject(e);
+  }
+}
 
-      // Determine platform by clean first character
-      if (raw.startsWith('*')) {
-        platform = 'grabfood';
-        formattedOrder = 'GF-' + raw.slice(1).replace(/[^a-zA-Z0-9]/g, '');
-        label = 'Grabfood';
-        speakText = formattedOrder;
-      } else if (raw.startsWith('/')) {
-        platform = 'foodpanda';
-        formattedOrder = '#' + raw.slice(1).replace(/[^a-zA-Z0-9]/g, '');
-        label = 'Foodpanda';
-        speakText = formattedOrder.slice(1);
-      } else if (raw.startsWith('-')) {
-        platform = 'deliveroo';
-        formattedOrder = '#' + raw.slice(1).replace(/[^a-zA-Z0-9]/g, '');
-        label = 'Deliveroo';
-        speakText = formattedOrder.slice(1);
-      } else {
-        platform = 'takeaway';
-        label = 'Takeaway';
-        speakText = formattedOrder;
-      }
+function speakWithPause(order) {
 
-      if (!formattedOrder) return; // prevent empty entries
+  return new Promise(function(resolve) {
 
-      var newEntry = { text: formattedOrder, platform: platform, platformLabel: label };
-      orders.unshift(newEntry);
-      orders = orders.slice(0, 10);
-      try { localStorage.setItem('orders', JSON.stringify(orders)); } catch (e) {}
-      showOrders();
-
-      if (isSpeaking) {
-        speechQueue.push(speakText);
-      } else {
-        playDingAndSpeak(speakText);
-      }
-    }
-
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        const input = document.getElementById('entryInput');
-        let value = input.value.trim();
-        if (value) {
-          addOrder(value);
-          input.value = '';
-        }
-        input.focus();
-        tryPlayDing();
-      }
-    });
-
-    var imageList = [
-      "OKNEXTV1_1.jpg",
-      "OKNEXTV1_2.jpg"
-    ];
-    var imgIndex = 0;
-    function alternateImage() {
-      imgIndex = (imgIndex + 1) % imageList.length;
-      document.getElementById('altImage').src = imageList[imgIndex];
-    }
-    setInterval(alternateImage, 10000);
-
-    window.onload = function() {
-      try { localStorage.removeItem('orders'); } catch (e) {}
-      orders = [];
-      showOrders();
-      setTimeout(() => {
-        document.getElementById('entryInput').focus();
-      }, 250);
-      setInterval(() => {
-        document.getElementById('entryInput').focus();
-      }, 2000);
+    var map = {
+      '-': 'dash',
+      '_': 'underscore',
+      '/': 'slash',
+      '\\': 'backslash',
+      '.': 'dot',
+      ',': 'comma',
+      '#': '',
+      '&': 'and',
+      '@': 'at',
+      '*': '',
+      '+': 'plus',
+      '=': 'equals',
+      '%': 'percent',
+      '$': 'dollar'
     };
-  </script>
+
+    var sequence = [];
+
+    for (var i = 0; i < order.length; i++) {
+      var char = order[i];
+
+      if (map[char] !== undefined) {
+        if (map[char]) sequence.push(map[char]);
+      }
+      else if (/[a-zA-Z]/.test(char)) {
+        sequence.push(char.toUpperCase());
+      }
+      else {
+        sequence.push(char);
+      }
+    }
+
+    var index = 0;
+
+    function speakNext() {
+
+      if (index >= sequence.length) return resolve();
+
+      window.speechSynthesis.cancel();
+
+      var utterance = new SpeechSynthesisUtterance(sequence[index]);
+
+      utterance.lang = 'en-GB';
+      utterance.rate = 1;
+
+      utterance.onend = function() {
+        setTimeout(function() {
+          index++;
+          speakNext();
+        }, 30);
+      };
+
+      speechSynthesis.speak(utterance);
+    }
+
+    speakNext();
+  });
+}
+
+async function playDingAndSpeak(order) {
+
+  isSpeaking = true;
+
+  try {
+    await tryPlayDing();
+  }
+  catch(e){}
+
+  await new Promise(r => setTimeout(r,1000));
+
+  await speakWithPause(order);
+
+  isSpeaking = false;
+
+  if(speechQueue.length>0){
+    var nextOrder=speechQueue.shift();
+    playDingAndSpeak(nextOrder);
+  }
+}
+
+function addOrder(raw){
+
+  var input = raw.trim();
+
+  input = input.replace(/^[^a-zA-Z0-9]+/, '');
+  input = input.replace(/[*\/-]/g,'');
+
+  var platform='';
+  var formattedOrder=input;
+  var label='';
+  var speakText='';
+
+  if(raw.startsWith('*')){
+
+    platform='grabfood';
+    formattedOrder='GF-'+raw.slice(1).replace(/[^a-zA-Z0-9]/g,'');
+    label='Grabfood';
+    speakText=formattedOrder;
+
+  }
+  else if(raw.startsWith('/')){
+
+    platform='foodpanda';
+    formattedOrder='#'+raw.slice(1).replace(/[^a-zA-Z0-9]/g,'');
+    label='Foodpanda';
+    speakText=formattedOrder.slice(1);
+
+  }
+  else if(raw.startsWith('-')){
+
+    platform='deliveroo';
+    formattedOrder='#'+raw.slice(1).replace(/[^a-zA-Z0-9]/g,'');
+    label='Deliveroo';
+    speakText=formattedOrder.slice(1);
+
+  }
+  else{
+
+    platform='takeaway';
+    label='Takeaway';
+    speakText=formattedOrder;
+  }
+
+  if(!formattedOrder) return;
+
+  const MAX_CHARS = 7;
+  formattedOrder = formattedOrder.substring(0, MAX_CHARS);
+  speakText = speakText.substring(0, MAX_CHARS);
+
+  var newEntry = {
+    text: formattedOrder,
+    platform: platform,
+    platformLabel: label
+  };
+
+  orders.unshift(newEntry);
+  orders = orders.slice(0,10);
+
+  try{
+    localStorage.setItem('orders',JSON.stringify(orders));
+  }catch(e){}
+
+  showOrders();
+
+  if(isSpeaking){
+    speechQueue.push(speakText);
+  }
+  else{
+    playDingAndSpeak(speakText);
+  }
+}
+
+document.addEventListener('keydown',function(e){
+
+  if(e.key==='Enter'){
+
+    const input=document.getElementById('entryInput');
+
+    let value=input.value.trim();
+
+    if(value){
+      addOrder(value);
+      input.value='';
+    }
+
+    input.focus();
+
+    tryPlayDing();
+  }
+
+});
+
+var imageList=[
+  "OKNEXTV1_1.jpg",
+  "OKNEXTV1_2.jpg"
+];
+
+var imgIndex=0;
+
+function alternateImage(){
+
+  imgIndex=(imgIndex+1)%imageList.length;
+
+  document.getElementById('altImage').src=imageList[imgIndex];
+}
+
+setInterval(alternateImage,10000);
+
+window.onload=function(){
+
+  try{
+    localStorage.removeItem('orders');
+  }catch(e){}
+
+  orders=[];
+  showOrders();
+
+  setTimeout(()=>{
+    document.getElementById('entryInput').focus();
+  },250);
+
+  setInterval(()=>{
+    document.getElementById('entryInput').focus();
+  },2000);
+};
+
+</script>
+
 </body>
 </html>
